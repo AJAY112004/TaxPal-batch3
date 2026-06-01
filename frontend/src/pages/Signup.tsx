@@ -1,0 +1,224 @@
+import { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { useAuth } from "@/contexts/AuthContext";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { toast } from "sonner";
+import { AlertCircle } from "lucide-react";
+
+const countries = ["United States", "Canada", "United Kingdom", "Australia", "Germany", "France", "India"];
+const baseIncomeBrackets = ["Under $25,000", "$25,000 - $50,000", "$50,000 - $75,000", "$75,000 - $100,000", "Over $100,000"];
+
+const getCurrencySymbol = (country: string) => {
+  switch (country) {
+    case "United Kingdom": return "£";
+    case "Germany":
+    case "France": return "€";
+    case "India": return "₹";
+    default: return "$";
+  }
+};
+
+const Signup = () => {
+  const [password, setPassword] = useState("");
+  const [fullName, setFullName] = useState("");
+  const [email, setEmail] = useState("");
+  const [country, setCountry] = useState("");
+  const [incomeBracket, setIncomeBracket] = useState("");
+  const [phone, setPhone] = useState("");
+  const [address, setAddress] = useState("");
+  const [taxId, setTaxId] = useState("");
+  const [filingStatus, setFilingStatus] = useState("");
+  const [professionalRole, setProfessionalRole] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
+  const navigate = useNavigate();
+  const { register } = useAuth();
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setFormError(null);
+    if (!fullName.trim() || !email.trim() || !password) {
+      toast.error("Name, email and password are required");
+      return;
+    }
+    if (password.length < 8) {
+      toast.error("Password must be at least 8 characters");
+      return;
+    }
+    setLoading(true);
+    try {
+      await register({
+        name: fullName.trim(),
+        email: email.trim().toLowerCase(),
+        password,
+        country,
+        income_bracket: incomeBracket,
+        phone,
+        address,
+        tax_id: taxId,
+        filing_status: filingStatus,
+        professional_role: professionalRole,
+      });
+      toast.success("Welcome to TaxPal!");
+      navigate("/dashboard", { replace: true });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Sign up failed";
+      const isDuplicateEmail =
+        /already exists|already registered/i.test(message);
+      setFormError(message);
+      if (!isDuplicateEmail) {
+        toast.error(message);
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-background py-8">
+      <div className="w-full max-w-md">
+        <div className="rounded-xl border bg-card p-8 shadow-sm">
+          <div className="mb-6 text-center">
+            <h1 className="text-2xl font-bold text-card-foreground">Create an Account</h1>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Enter your information to create your TaxPal account
+            </p>
+          </div>
+
+          {formError && (
+            <Alert variant="destructive" className="mb-4">
+              <AlertCircle className="h-4 w-4" />
+              <AlertTitle>
+                {/already exists|already registered/i.test(formError)
+                  ? "Account already exists"
+                  : "Could not create account"}
+              </AlertTitle>
+              <AlertDescription>
+                <p>{formError}</p>
+                {/already exists|already registered/i.test(formError) && (
+                  <p className="mt-2 space-y-1">
+                    <span className="block">
+                      <Link
+                        to="/"
+                        state={{ email: email.trim().toLowerCase() }}
+                        className="font-medium underline underline-offset-4"
+                      >
+                        Sign in
+                      </Link>
+                      {" if you know your password, or "}
+                      <Link
+                        to="/forgot-password"
+                        state={{ email: email.trim().toLowerCase() }}
+                        className="font-medium underline underline-offset-4"
+                      >
+                        reset your password
+                      </Link>
+                      {" to use a new one."}
+                    </span>
+                  </p>
+                )}
+              </AlertDescription>
+            </Alert>
+          )}
+
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="fullName">Full Name</Label>
+              <Input id="fullName" placeholder="Enter your full name" value={fullName} onChange={(e) => setFullName(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
+                type="email"
+                placeholder="Enter your email address"
+                value={email}
+                onChange={(e) => {
+                  setEmail(e.target.value);
+                  if (formError) setFormError(null);
+                }}
+                aria-invalid={!!formError && /already exists|already registered/i.test(formError)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="password">Password</Label>
+              <Input id="password" type="password" placeholder="Choose a password" value={password} onChange={(e) => setPassword(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label>Country</Label>
+              <Select value={country} onValueChange={(val) => { setCountry(val); setIncomeBracket(""); }}>
+                <SelectTrigger><SelectValue placeholder="Select your country" /></SelectTrigger>
+                <SelectContent>
+                  {countries.map((c) => (<SelectItem key={c} value={c}>{c}</SelectItem>))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Income Bracket (Optional)</Label>
+              <Select value={incomeBracket} onValueChange={setIncomeBracket}>
+                <SelectTrigger><SelectValue placeholder="Select your income bracket" /></SelectTrigger>
+                <SelectContent>
+                  {baseIncomeBrackets.map((b) => {
+                    const localized = b.replace(/\$/g, getCurrencySymbol(country));
+                    return <SelectItem key={localized} value={localized}>{localized}</SelectItem>;
+                  })}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="phone">Phone</Label>
+              <Input id="phone" placeholder="Enter your phone number" value={phone} onChange={(e) => setPhone(e.target.value)} />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="address">Address</Label>
+              <Input id="address" placeholder="Enter your address" value={address} onChange={(e) => setAddress(e.target.value)} />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="taxId">Tax ID</Label>
+              <Input id="taxId" placeholder="Enter your tax ID" value={taxId} onChange={(e) => setTaxId(e.target.value)} />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Filing Status</Label>
+              <Select value={filingStatus} onValueChange={setFilingStatus}>
+                <SelectTrigger><SelectValue placeholder="Select filing status" /></SelectTrigger>
+                <SelectContent>
+                  {["Single", "Married Filing Jointly", "Married Filing Separately", "Head of Household"].map((status) => (
+                    <SelectItem key={status} value={status}>{status}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="professionalRole">Professional Role</Label>
+              <Input id="professionalRole" placeholder="Enter your professional role" value={professionalRole} onChange={(e) => setProfessionalRole(e.target.value)} />
+            </div>
+
+            <Button type="submit" className="w-full" disabled={loading}>{loading ? "Creating..." : "Create Account"}</Button>
+          </form>
+
+          <div className="mt-4 text-center text-sm text-muted-foreground">
+            Already have an account?{" "}
+            <Link to="/" className="font-medium text-primary hover:underline">Sign in</Link>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default Signup;
