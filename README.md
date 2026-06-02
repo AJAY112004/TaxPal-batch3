@@ -107,3 +107,4 @@ You should see local and network URLs, e.g.:
 - Added verification scripts to ensure backend and database connectivity before deployment.
 - Finalized user experience with polished UI/UX, accessibility improvements, and cross-browser compatibility testing.
 
+Live Server : https://taxpal-batch3-1.onrender.com
