@@ -1,6 +1,26 @@
 import axios from "axios";
 
-export const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:4000/api";
+const DEFAULT_API_BASE = "https://taxpal-batch3.onrender.com/api";
+
+/** Normalize env URL: reject placeholders, ensure /api suffix. */
+function normalizeApiBase(raw?: string): string {
+  const value = raw?.trim();
+  if (
+    !value ||
+    /your-api\.onrender\.com|your-backend\.onrender\.com/i.test(value)
+  ) {
+    return DEFAULT_API_BASE;
+  }
+  let base = value.replace(/\/+$/, "");
+  if (!base.endsWith("/api")) {
+    base = `${base}/api`;
+  }
+  return base;
+}
+
+export const API_BASE = normalizeApiBase(
+  import.meta.env.VITE_API_URL || DEFAULT_API_BASE
+);
 
 export class ApiRequestError extends Error {
   statusCode?: number;
@@ -14,6 +34,7 @@ export class ApiRequestError extends Error {
 
 const axiosInstance = axios.create({
   baseURL: API_BASE,
+  withCredentials: true,
   headers: {
     "Content-Type": "application/json",
   },
@@ -21,6 +42,7 @@ const axiosInstance = axios.create({
 
 axiosInstance.interceptors.request.use(
   (config) => {
+    config.baseURL = API_BASE;
     const token = localStorage.getItem("taxpal_token");
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
@@ -32,6 +54,9 @@ axiosInstance.interceptors.request.use(
 
 axiosInstance.interceptors.response.use(
   (response) => {
+    if (response.config.responseType === "blob") {
+      return response;
+    }
     if (response.data && response.data.success !== undefined) {
       return response.data.data;
     }
@@ -53,7 +78,6 @@ axiosInstance.interceptors.response.use(
       error.message ||
       "An unexpected error occurred";
 
-    // Joi validation messages can be long comma-separated strings
     if (typeof message === "string" && message.includes('"') && message.includes(" is ")) {
       message = message
         .split(", ")
@@ -183,13 +207,11 @@ export const reportsApi = {
     api<{ id: string }>("/reports", { method: "POST", body: JSON.stringify(body) }),
   download: async (id: string, filename = "TaxPal-Report.pdf") => {
     const token = localStorage.getItem("taxpal_token");
-    const res = await fetch(`${API_BASE}/reports/download/${id}`, {
+    const response = await axiosInstance.get(`/reports/download/${id}`, {
+      responseType: "blob",
       headers: token ? { Authorization: `Bearer ${token}` } : {},
     });
-    if (!res.ok) {
-      throw new Error("Failed to download report");
-    }
-    const blob = await res.blob();
+    const blob = response.data as Blob;
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;

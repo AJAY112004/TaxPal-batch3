@@ -20,18 +20,15 @@ services:
       - key: JWT_SECRET
         generateValue: true
       - key: CLIENT_URL
-        sync: false
+        value: https://taxpal-batch3-1.onrender.com
 
   - type: web
     name: taxpal-frontend
     runtime: static
     rootDir: frontend
-    buildCommand: npm install && npm run build
+    buildCommand: npm install && NODE_ENV=production VITE_API_URL=https://taxpal-batch3.onrender.com/api npm run build
     staticPublishPath: dist
-    envVars:
-      - key: VITE_API_URL
-        sync: false
     routes:
       - type: rewrite
-        source: /*
+        source: /^(?!.*\.).*$/
         destination: /index.html

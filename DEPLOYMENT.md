@@ -33,7 +33,7 @@ This guide walks through deploying TaxPal on [Render](https://render.com): a **N
 | `PORT` | `4000` (Render sets `PORT` automatically; keep in sync) |
 | `MONGODB_URI` | Your Atlas connection string |
 | `JWT_SECRET` | At least **32** random characters (use a password generator) |
-| `CLIENT_URL` | Your frontend URL, e.g. `https://taxpal-frontend.onrender.com` |
+| `CLIENT_URL` | Your frontend URL, e.g. `https://taxpal-batch3-1.onrender.com` (no trailing slash) |
 
 For multiple origins (preview + production), use comma-separated values:
 
@@ -44,7 +44,7 @@ https://taxpal-frontend.onrender.com,https://taxpal.onrender.com
 After deploy, verify:
 
 ```bash
-curl https://YOUR-API.onrender.com/health
+curl https://taxpal-batch3.onrender.com/health
 # {"status":"OK"}
 ```
 
@@ -60,7 +60,7 @@ curl https://YOUR-API.onrender.com/health
 
 | Variable | Example |
 |----------|---------|
-| `VITE_API_URL` | `https://YOUR-API.onrender.com/api` |
+| `VITE_API_URL` | `https://taxpal-batch3.onrender.com/api` (must end with `/api`) |
 
 **Important:** `VITE_API_URL` must include `/api` and use `https`. Rebuild the static site after changing env vars.
 
@@ -104,6 +104,7 @@ npm run preview
 |-------|-----|
 | CORS errors | Set `CLIENT_URL` to the exact browser origin |
 | 401 on all routes | Check `VITE_API_URL` ends with `/api` |
+| 404 to `taxpal-batch3.onrender.com` | Replace placeholder: use `https://taxpal-batch3.onrender.com/api` in Render env, then rebuild frontend |
 | Config validation error on boot | `JWT_SECRET` ≥ 32 chars in production |
 | MongoDB connection failed | Atlas IP allowlist and correct `MONGODB_URI` |
 | Blank page on refresh | Add SPA rewrite to `/index.html` |
